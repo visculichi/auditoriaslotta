@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auditoría Lotta</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <header class="glass-header">
+        <div class="header-content">
+            <h1>Auditoría Lotta</h1>
+            <div class="header-right">
+                <button id="logoutBtn" class="icon-btn" title="Cerrar Sesión"
+                    style="display: none; font-size: 1.2rem; cursor: pointer;">🚪</button> <button id="manageUsersBtn"
+                    class="icon-btn" title="Gestionar Usuarios" style="display: none;">👥</button>
+                <button id="openAdminBtn" class="icon-btn" title="Configuración de Puntajes"
+                    style="display: none;">⚙️</button>
+                <div class="score-container">
+                    <span class="score-label">Puntaje Total</span>
+                    <span class="score-value" id="totalScore">0</span><span class="score-max">/100</span>
+                </div>
+            </div>
+        </div>
+        <div class="progress-bar-container">
+            <div class="progress-bar" id="progressBar" style="width: 0%;"></div>
+        </div>
+    </header>
+
+    <main class="container" id="sectorsContainer">
+        <!-- Rendered dynamically by JS -->
+    </main>
+
+    <div class="action-footer glass-header">
+        <button id="finishAuditBtn" class="primary-btn">Finalizar Auditoría</button>
+    </div>
+
+    <!-- Final Report Modal -->
+    <div id="reportModal" class="modal hidden">
+        <div class="modal-content glass-card" style="background: rgba(255, 255, 255, 0.95);">
+            <h2>Resumen de Auditoría</h2>
+            <div class="final-score" id="finalScoreDisplay">--/100</div>
+            <div id="reportDetails">Las selecciones se han guardado localmente.</div>
+            <div style="display: flex; gap: 10px; justify-content: center; margin-top: 25px;">
+                <button id="closeModalBtn" class="secondary-btn" style="margin-top: 0;">Volver</button>
+                <button id="generatePdfBtn" class="primary-btn"
+                    style="max-width: 250px; margin-top: 0; font-size: 0.9rem;">📄 Descargar PDF</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Configuration Modal -->
+    <div id="adminModal" class="modal hidden">
+        <div class="modal-content glass-card admin-content"
+            style="background: rgba(255, 255, 255, 0.98); max-width: 600px; max-height: 95vh; display: flex; flex-direction: column;">
+            <div class="admin-header">
+                <h2>⚙️ Configuración de Pesos</h2>
+                <div class="admin-total-indicator" id="adminTotalIndicator">
+                    Suma Sectores: <span id="adminSectorsTotal">0</span>/100
+                </div>
+            </div>
+
+            <div class="admin-body" id="adminFormContainer">
+                <!-- Rendered dynamically by JS -->
+            </div>
+
+            <div class="admin-footer">
+                <div class="admin-error-msg" id="adminErrorMsg"></div>
+                <div class="admin-actions">
+                    <button id="closeAdminBtn" class="secondary-btn" style="margin-top: 0;">Cancelar</button>
+                    <button class="secondary-btn" id="resetAdminBtn"
+                        style="margin-top: 0; border-color: var(--yellow-color); color: var(--yellow-color);">Restablecer</button>
+                    <button id="saveAdminBtn" class="primary-btn" style="margin-top: 0; padding: 12px 25px;">Guardar y
+                        Recargar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- User Management Modal -->
+    <div id="usersModal" class="modal hidden">
+        <div class="modal-content glass-card" style="background: rgba(255, 255, 255, 0.98); max-width: 500px;">
+            <div class="admin-header">
+                <h2>👥 Crear Nuevo Usuario</h2>
+            </div>
+            <form id="createUserForm"
+                style="display: flex; flex-direction: column; gap: 15px; margin-top: 20px; text-align: left;">
+                <label style="font-size: 0.9rem; font-weight: 600;">Correo Electrónico:</label>
+                <input type="email" id="newEmail" required class="admin-desc-input"
+                    style="padding: 10px; height: 40px;">
+
+                <label style="font-size: 0.9rem; font-weight: 600;">Contraseña (mínimo 6 caracteres):</label>
+                <input type="password" id="newPassword" required class="admin-desc-input"
+                    style="padding: 10px; height: 40px;">
+
+                <label style="font-size: 0.9rem; font-weight: 600;">Rol del usuario:</label>
+                <select id="newRole" class="admin-desc-input" style="padding: 10px; height: 40px; font-weight: 600;">
+                    <option value="operator">Operador (Solo auditar)</option>
+                    <option value="admin">Administrador (Auditar, Configurar y Crear Usuarios)</option>
+                </select>
+
+                <div id="createUserMsg" style="font-weight: bold; font-size: 0.9em; margin-top: 10px; display: none;">
+                </div>
+
+                <div class="admin-actions" style="margin-top: 20px;">
+                    <button type="button" id="closeUsersBtn" class="secondary-btn"
+                        style="margin-top: 0;">Cerrar</button>
+                    <button type="submit" class="primary-btn" id="createUserBtn" style="margin-top: 0;">Crear
+                        Usuario</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Login Modal -->
+    <div id="loginModal" class="modal hidden">
+        <div class="modal-content glass-card" style="max-width: 400px; text-align: center;">
+            <h2>Iniciar Sesión</h2>
+            <form id="loginForm" style="display: flex; flex-direction: column; gap: 15px; margin-top: 20px;">
+                <input type="email" id="loginEmail" placeholder="Correo electrónico" required class="admin-desc-input"
+                    style="padding: 10px; font-family: inherit; font-size: 1rem; width: 100%; box-sizing: border-box;">
+                <input type="password" id="loginPassword" placeholder="Contraseña" required class="admin-desc-input"
+                    style="padding: 10px; font-family: inherit; font-size: 1rem; width: 100%; box-sizing: border-box;">
+                <div id="loginError"
+                    style="color: var(--red-color); font-weight: bold; font-size: 0.9em; display: none;"></div>
+                <button type="submit" class="primary-btn" id="loginSubmitBtn">Ingresar</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="data.js"></script>
+    <script src="app.js"></script>
+</body>
+
+</html>
