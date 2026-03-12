@@ -581,12 +581,24 @@ function closeAdmin() {
 
 function renderAdminForm() {
     const container = document.getElementById('adminFormContainer');
+
+    // Guardar el estado de los sectores expandidos actualmente
+    const expandedSectors = [];
+    container.querySelectorAll('.admin-sector-form.expanded').forEach(el => {
+        expandedSectors.push(el.id);
+    });
+
     container.innerHTML = '';
 
     adminTempData.sectors.forEach((sector, sIdx) => {
+        const sectorId = `admin-sector-${sIdx}`;
         const sectorEl = document.createElement('div');
         sectorEl.className = 'admin-sector-form';
-        sectorEl.id = `admin-sector-${sIdx}`;
+        sectorEl.id = sectorId;
+
+        if (expandedSectors.includes(sectorId)) {
+            sectorEl.classList.add('expanded');
+        }
 
         const header = document.createElement('div');
         header.className = 'admin-sector-header';
