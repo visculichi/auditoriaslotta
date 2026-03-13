@@ -346,63 +346,82 @@ async function generatePDFReport() {
 
         let hasIssues = false;
 
-        activeData.sectors.forEach(sector => {
+        Object.keys(activeData.groups).forEach(sectorId => {
+            const sector = activeData.groups[sectorId];
             let sectorHeaderPrinted = false;
 
             sector.items.forEach(item => {
                 const status = state.selections[item.id];
-                if (status === 'yellow' || status === 'red') {
-                    hasIssues = true;
-
+                if (status) {
+                    // Imprimimos el header del sector solo una vez si hay al menos un item evaluado
                     if (!sectorHeaderPrinted) {
                         checkPageBreak();
                         pdf.setFontSize(12);
                         pdf.setFont(undefined, 'bold');
+                        pdf.setTextColor(0, 0, 0);
                         pdf.text(`Sector: ${sector.name}`, margin, yPos);
                         yPos += 10;
                         sectorHeaderPrinted = true;
                     }
 
                     checkPageBreak();
-                    const statusText = status === 'yellow' ? '[REGULAR]' : '[MAL]';
-                    const obs = state.observations[item.id] || 'Sin observaciones.';
+                    
+                    if (status === 'green') {
+                        // Formato resumido para los que están Bien
+                        pdf.setFontSize(10);
+                        pdf.setFont(undefined, 'bold');
+                        pdf.setTextColor(16, 185, 129); // Verde
+                        pdf.text(`[BIEN] ${item.name}`, margin + 5, yPos);
+                        yPos += 7;
+                    } else {
+                        // Formato detallado con observación y fotos para los Regulares/Malos
+                        hasIssues = true;
+                        const statusText = status === 'yellow' ? '[REGULAR]' : '[MAL]';
+                        const obs = state.observations[item.id] || 'Sin observaciones.';
 
-                    pdf.setFontSize(11);
-                    pdf.setFont(undefined, 'bold');
-                    pdf.setTextColor(status === 'yellow' ? 217 : 220, status === 'yellow' ? 119 : 38, status === 'yellow' ? 6 : 38);
-                    pdf.text(`${statusText} ${item.name}`, margin + 5, yPos);
-                    yPos += 7;
+                        pdf.setFontSize(11);
+                        pdf.setFont(undefined, 'bold');
+                        pdf.setTextColor(status === 'yellow' ? 217 : 220, status === 'yellow' ? 119 : 38, status === 'yellow' ? 6 : 38);
+                        pdf.text(`${statusText} ${item.name}`, margin + 5, yPos);
+                        yPos += 7;
 
-                    pdf.setFontSize(10);
-                    pdf.setFont(undefined, 'normal');
-                    pdf.setTextColor(80, 80, 80);
+                        pdf.setFontSize(10);
+                        pdf.setFont(undefined, 'normal');
+                        pdf.setTextColor(80, 80, 80);
 
-                    const splitObs = pdf.splitTextToSize(`Observación: ${obs}`, 170);
-                    pdf.text(splitObs, margin + 5, yPos);
-                    yPos += (splitObs.length * 5) + 5;
+                        const splitObs = pdf.splitTextToSize(`Observación: ${obs}`, 170);
+                        pdf.text(splitObs, margin + 5, yPos);
+                        yPos += (splitObs.length * 5) + 5;
 
-                    // Si hay fotos, intentar agregarlas (podría fallar por CORS, lo evitamos con bloques try-catch aislados)
-                    if (state.photos[item.id] && state.photos[item.id].length > 0) {
-                        checkPageBreak(60);
-                        let xOff = margin + 5;
-                        state.photos[item.id].forEach(dataUrl => {
-                            if (xOff > 150) { xOff = margin + 5; yPos += 55; }
-                            try {
-                                pdf.addImage(dataUrl, 'JPEG', xOff, yPos, 40, 40);
-                                xOff += 45;
-                            } catch (e) { console.error("Could not add image to pdf", e); }
-                        });
-                        yPos += 45;
+                        // Fotos para problemas
+                        if (state.photos[item.id] && state.photos[item.id].length > 0) {
+                            checkPageBreak(60);
+                            let xOff = margin + 5;
+                            state.photos[item.id].forEach(dataUrl => {
+                                if (xOff > 150) { xOff = margin + 5; yPos += 55; }
+                                try {
+                                    pdf.addImage(dataUrl, 'JPEG', xOff, yPos, 40, 40);
+                                    xOff += 45;
+                                } catch (e) { console.error("Could not add image to pdf", e); }
+                            });
+                            yPos += 45;
+                        }
+                        yPos += 5; // Separación extra después de un item con error
                     }
-                    yPos += 5;
                 }
             });
+            // Espacio entre sectores
+            if (sectorHeaderPrinted) {
+                yPos += 5;
+            }
         });
 
         if (!hasIssues) {
+            checkPageBreak();
             pdf.setFontSize(12);
             pdf.setTextColor(6, 95, 70);
-            pdf.text('¡Excelente! No se registraron puntos regulares ni malos en esta auditoría.', margin, yPos);
+            pdf.text('¡Excelente! No se registraron observaciones regulares ni males en esta auditoría.', margin, yPos);
+            yPos += 10;
         }
 
         const dateObj = new Date();
