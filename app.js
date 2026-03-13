@@ -15,15 +15,36 @@ const state = {
 };
 
 // Configuration Management
-function getAuditData() {
+let activeData = null; // Will be loaded from Supabase or fallback to data.js
+
+async function getAuditData() {
+    try {
+        const { data, error } = await supabaseClient
+            .from('audit_config')
+            .select('config')
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
+
+        if (error && error.code !== 'PGRST116') {
+             console.error("Error fetching config from Supabase:", error);
+        }
+
+        if (data && data.config) {
+            return JSON.parse(data.config);
+        }
+    } catch(e) {
+        console.error("Failed to load audit config", e);
+    }
+    
+    // Fallback to local storage or original structure
     const saved = localStorage.getItem('lottaAuditConfig');
     if (saved) return JSON.parse(saved);
-    return JSON.parse(JSON.stringify(auditData)); // fallback to data.js original structure
+    return JSON.parse(JSON.stringify(auditData));
 }
 
-const activeData = getAuditData();
-
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    activeData = await getAuditData();
     checkUser();
 
     document.getElementById('loginForm').addEventListener('submit', handleLogin);
@@ -49,6 +70,14 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('closeAdminBtn').addEventListener('click', closeAdmin);
     document.getElementById('saveAdminBtn').addEventListener('click', saveAdmin);
     document.getElementById('resetAdminBtn').addEventListener('click', resetAdmin);
+    
+    // History Modal Listeners
+    const openHistoryBtn = document.getElementById('openHistoryBtn');
+    if (openHistoryBtn) openHistoryBtn.addEventListener('click', openHistoryModal);
+    const closeHistoryBtn = document.getElementById('closeHistoryBtn');
+    if (closeHistoryBtn) closeHistoryBtn.addEventListener('click', () => {
+        document.getElementById('historyModal').classList.add('hidden');
+    });
 });
 
 function renderApp() {
@@ -376,16 +405,21 @@ async function generatePDFReport() {
             pdf.text('¡Excelente! No se registraron puntos regulares ni malos en esta auditoría.', margin, yPos);
         }
 
-        const filename = `Auditoria_Lotta_${new Date().getTime()}.pdf`;
+        const dateObj = new Date();
+        const formattedDateObj = `${dateObj.getDate()}-${dateObj.getMonth() + 1}-${dateObj.getFullYear()}`;
+        
+        // Use a unique filename for the cloud, but a user friendly one for download
+        const uniqueFileName = `Auditoria_Lotta_${formattedDateObj}_${dateObj.getTime()}.pdf`;
+        const downloadFileName = `Auditoria_Lotta_${formattedDateObj}.pdf`;
 
         // 1. Descarga Local
-        pdf.save(filename);
+        pdf.save(downloadFileName);
 
         // 2. Subida a Supabase
         if (currentUser && currentAuditId) {
             btn.innerText = '☁ Subiendo a la nube...';
             const pdfBlob = pdf.output('blob');
-            const filePath = `${currentUser.id}/${filename}`;
+            const filePath = `${currentUser.id}/${uniqueFileName}`;
 
             const { error: uploadError } = await supabaseClient.storage
                 .from('audit_reports')
@@ -400,7 +434,11 @@ async function generatePDFReport() {
             } else {
                 const { data: publicUrlData } = supabaseClient.storage.from('audit_reports').getPublicUrl(filePath);
                 if (publicUrlData) {
-                    await supabaseClient.from('audits').update({ pdf_url: publicUrlData.publicUrl }).eq('id', currentAuditId);
+                    const { error: updateError } = await supabaseClient.from('audits').update({ pdf_url: publicUrlData.publicUrl }).eq('id', currentAuditId);
+                    if (updateError) {
+                         console.error("Error updating audit with PDF url", updateError);
+                         alert("Error vinculando el PDF a la auditoría: " + updateError.message);
+                    }
                 }
                 document.getElementById('reportDetails').innerText = "✅ PDF descargado localmente y guardado en la nube.";
             }
@@ -428,10 +466,17 @@ async function checkUser() {
             await fetchUserRole();
             document.getElementById('loginModal').classList.add('hidden');
             document.getElementById('logoutBtn').style.display = 'inline-flex';
-            document.getElementById('sectorsContainer').style.display = 'flex';
-            document.querySelector('.action-footer').style.display = 'flex';
-            renderApp();
-            updateTotalScore();
+            const historyBtn = document.getElementById('openHistoryBtn');
+            if (historyBtn) historyBtn.style.display = 'inline-flex';
+            
+            if (activeData) {
+                document.getElementById('sectorsContainer').style.display = 'flex';
+                document.querySelector('.action-footer').style.display = 'flex';
+                renderApp();
+                updateTotalScore();
+            } else {
+                 document.getElementById('sectorsContainer').innerHTML = "<div style='text-align: center; padding: 20px;'>Cargando configuración...</div>";
+            }
         } else {
             showLoginScreen();
         }
@@ -447,6 +492,8 @@ async function checkUser() {
 function showLoginScreen() {
     document.getElementById('loginModal').classList.remove('hidden');
     document.getElementById('logoutBtn').style.display = 'none';
+    const historyBtn = document.getElementById('openHistoryBtn');
+    if (historyBtn) historyBtn.style.display = 'none';
     document.getElementById('manageUsersBtn').style.display = 'none';
     document.getElementById('openAdminBtn').style.display = 'none';
 
@@ -722,11 +769,31 @@ function validateAdminForm() {
     }
 }
 
-function saveAdmin() {
+async function saveAdmin() {
     if (document.getElementById('saveAdminBtn').disabled) return;
+    
+    document.getElementById('saveAdminBtn').disabled = true;
+    document.getElementById('saveAdminBtn').innerText = 'Guardando...';
 
-    localStorage.setItem('lottaAuditConfig', JSON.stringify(adminTempData));
-    window.location.reload(); // Reloads app dynamically pulling activeData from local storage
+    activeData = JSON.parse(JSON.stringify(adminTempData));
+    
+    try {
+        const { error } = await supabaseClient
+            .from('audit_config')
+            .insert([{ config: JSON.stringify(adminTempData) }]);
+            
+        if (error) throw error;
+        
+        // Also save to local storage as fallback during offline times
+        localStorage.setItem('lottaAuditConfig', JSON.stringify(adminTempData));
+        
+        window.location.reload(); // Reloads app dynamically pulling activeData
+    } catch(err) {
+        console.error("Error al guardar la config", err);
+        document.getElementById('adminErrorMsg').innerText = 'Error guardando en el servidor: ' + err.message;
+        document.getElementById('saveAdminBtn').disabled = false;
+        document.getElementById('saveAdminBtn').innerText = 'Guardar y Recargar';
+    }
 }
 
 function resetAdmin() {
@@ -762,4 +829,123 @@ function addAdminItem(sIdx) {
         red: 'Descripción para mal...'
     });
     renderAdminForm();
+}
+
+/* =========================================
+   Audit History Logic
+   ========================================= */
+
+async function openHistoryModal() {
+    document.getElementById('historyModal').classList.remove('hidden');
+    const container = document.getElementById('historyListContainer');
+    container.innerHTML = '<div style="text-align: center; padding: 20px;">Cargando historial...</div>';
+
+    try {
+        // Fetch audits based on role
+        let query = supabaseClient.from('audits').select('*');
+        
+        if (currentRole !== 'admin') {
+             query = query.eq('user_id', currentUser.id);
+        }
+        
+        const { data, error } = await query.order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        if (!data || data.length === 0) {
+            container.innerHTML = '<div style="text-align: center; padding: 20px; color: #64748b;">No hay auditorías registradas.</div>';
+            return;
+        }
+
+        container.innerHTML = '';
+        data.forEach(audit => {
+            const date = new Date(audit.created_at).toLocaleString('es-AR');
+            const scoreClass = audit.total_score >= 80 ? 'green' : (audit.total_score >= 50 ? 'yellow' : 'red');
+            
+            const card = document.createElement('div');
+            card.className = 'history-card glass-card';
+            card.id = `audit-card-${audit.id}`;
+            card.style.cssText = 'padding: 15px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; border-left: 5px solid var(--' + scoreClass + '-color); flex-wrap: wrap; gap: 10px;';
+            
+            let actionsHtml = '';
+            
+            if (audit.pdf_url) {
+                const urlParts = audit.pdf_url.split('/');
+                const fileName = urlParts[urlParts.length - 1] || 'reporte.pdf';
+                // Because Supabase storage is cross-origin, standard `download` attr fails. 
+                // We use a custom function to fetch the blob and force download.
+                actionsHtml += `<button onclick="downloadPdfFromCloud('${audit.pdf_url}', '${fileName}')" class="primary-btn" style="padding: 8px 15px; font-size: 0.85rem; display: inline-flex; align-items: center; justify-content: center; gap: 5px; width: auto; max-width: none; margin-top: 0;"><span style="font-size:1.1em">📥</span> Descargar PDF</button>`;
+            } else {
+                actionsHtml += `<span style="font-size: 0.85em; color: #94a3b8;">Sin PDF</span>`;
+            }
+
+            // Optional: allow admins (or owners) to delete
+            if (currentRole === 'admin') {
+                actionsHtml += `<button onclick="deleteAudit('${audit.id}')" class="secondary-btn" title="Eliminar auditoría" style="margin-top: 0; padding: 8px 12px; color: var(--red-color); border-color: rgba(239, 68, 68, 0.3); background: rgba(239, 68, 68, 0.05); font-size: 0.85rem;"><span style="font-size:1.1em">🗑️</span></button>`;
+            }
+
+            card.innerHTML = `
+                <div style="flex: 1; min-width: 200px;">
+                    <div style="font-weight: 600; margin-bottom: 5px;">Auditoría: ${date}</div>
+                    <div style="font-size: 0.9em; color: var(--text-color);">Puntaje: ${formatScore(audit.total_score)}/100</div>
+                </div>
+                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                    ${actionsHtml}
+                </div>
+            `;
+            container.appendChild(card);
+        });
+
+    } catch (err) {
+        console.error("Error fetching history:", err);
+        container.innerHTML = `<div style="text-align: center; padding: 20px; color: var(--red-color);">Error cargando historial: ${err.message}</div>`;
+    }
+}
+
+async function deleteAudit(auditId) {
+    if(!confirm("¿Estás seguro de que querés borrar permanentemente esta auditoría? El PDF en la nube podría no borrarse automáticamente.")) return;
+
+    try {
+        const { error } = await supabaseClient
+            .from('audits')
+            .delete()
+            .eq('id', auditId);
+
+        if (error) throw error;
+
+        // Visual removal
+        const card = document.getElementById(`audit-card-${auditId}`);
+        if(card) {
+            card.style.opacity = '0';
+            setTimeout(() => card.remove(), 300);
+        }
+
+    } catch(err) {
+        alert("Error eliminando auditoría: " + err.message);
+    }
+}
+
+async function downloadPdfFromCloud(url, filename) {
+    try {
+        const response = await fetch(url);
+        if(!response.ok) throw new Error("No se pudo descargar el archivo de la nube");
+        
+        const blob = await response.blob();
+        const downloadUrl = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        
+        a.style.display = 'none';
+        a.href = downloadUrl;
+        a.download = filename;
+        document.body.appendChild(a);
+        
+        a.click();
+        
+        window.URL.revokeObjectURL(downloadUrl);
+        document.body.removeChild(a);
+    } catch(e) {
+        console.error("PDF Download error:", e);
+        // Fallback: just open the URL in a new tab if blob fetch fails (e.g. strict CORS blocking)
+        window.open(url, '_blank');
+    }
 }
