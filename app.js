@@ -415,13 +415,24 @@ async function generatePDFReport() {
             }
         });
 
-        if (!hasIssues) {
-            checkPageBreak();
-            pdf.setFontSize(12);
-            pdf.setTextColor(6, 95, 70);
-            pdf.text('¡Excelente! No se registraron observaciones regulares ni males en esta auditoría.', margin, yPos);
-            yPos += 10;
+        checkPageBreak();
+        pdf.setFontSize(12);
+        
+        let finalMessage = '';
+        if (state.totalScore >= 90) {
+            pdf.setTextColor(16, 185, 129); // Verde
+            finalMessage = '¡Excelente! No se registraron observaciones graves ni un desempeño bajo en esta auditoría.';
+        } else if (state.totalScore >= 65) {
+            pdf.setTextColor(245, 158, 11); // Amarillo/Naranja
+            finalMessage = '¡Atención! Se han registrado varias oportunidades de mejora. Es necesario revisar los puntos regulares para alcanzar el estándar óptimo.';
+        } else {
+            pdf.setTextColor(239, 68, 68); // Rojo
+            finalMessage = '¡Crítico! El resultado está muy por debajo de los estándares aceptables. Requiere acción correctiva inmediata en los puntos marcados.';
         }
+        
+        const splitMessage = pdf.splitTextToSize(`Conclusión: ${finalMessage}`, 190);
+        pdf.text(splitMessage, margin, yPos);
+        yPos += (splitMessage.length * 7) + 5;
 
         const dateObj = new Date();
         const formattedDateObj = `${dateObj.getDate()}-${dateObj.getMonth() + 1}-${dateObj.getFullYear()}`;
