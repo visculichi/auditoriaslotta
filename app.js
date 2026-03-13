@@ -339,7 +339,7 @@ async function generatePDFReport() {
         yPos += 30;
 
         pdf.setFontSize(14);
-        pdf.text('Detalle de Puntos a Mejorar', margin, yPos);
+        pdf.text('Reporte de Auditoría', margin, yPos);
         pdf.setLineWidth(0.5);
         pdf.line(margin, yPos + 2, 195, yPos + 2);
         yPos += 15;
