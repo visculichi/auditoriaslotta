@@ -17,6 +17,69 @@
     --font-family: 'Outfit', sans-serif;
 }
 
+.dark-theme {
+    --bg-color: #0f172a;
+    --text-color: #f8fafc;
+    --glass-bg: rgba(30, 41, 59, 0.85);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    
+    --green-color: #34d399;
+    --green-bg: rgba(16, 185, 129, 0.25);
+    --yellow-color: #fbbf24;
+    --yellow-bg: rgba(245, 158, 11, 0.25);
+    --red-color: #f87171;
+    --red-bg: rgba(239, 68, 68, 0.25);
+
+    --primary-color: #60a5fa;
+    --primary-hover: #3b82f6;
+}
+
+body.dark-theme {
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+}
+
+.dark-theme .glass-header {
+    background: rgba(15, 23, 42, 0.85);
+}
+
+.dark-theme .score-value {
+    color: #f8fafc;
+}
+
+.dark-theme .score-label, .dark-theme .score-max {
+    color: #94a3b8;
+}
+
+.dark-theme input, .dark-theme textarea {
+    background: rgba(30, 41, 59, 0.8);
+    color: #f8fafc;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.dark-theme input:focus, .dark-theme textarea:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.2);
+}
+
+.dark-theme .login-modal, .dark-theme .history-modal, .dark-theme .admin-content, .dark-theme .sector-card, .dark-theme .item-card, .dark-theme .history-card {
+    background: rgba(30, 41, 59, 0.95);
+    color: #f8fafc;
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+.dark-theme .admin-header {
+    background: rgba(30, 41, 59, 0.98);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.dark-theme #loginForm label, .dark-theme .admin-sector-header input {
+    color: #f8fafc;
+}
+
+.dark-theme .item-text {
+    color: #e2e8f0;
+}
+
 * {
     box-sizing: border-box;
     margin: 0;
@@ -733,6 +796,22 @@ h1 {
 .admin-item-actions {
     display: flex;
     justify-content: flex-end;
+}
+
+.icon-btn {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    transition: transform 0.2s;
+    color: var(--text-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.icon-btn:hover {
+    transform: scale(1.1);
 }
 
 .admin-del-btn {
