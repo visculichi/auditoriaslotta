@@ -44,6 +44,14 @@ async function getAuditData() {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
+    // 0. Cargar Tema Preferido
+    const savedTheme = localStorage.getItem('theme');
+    const themeIcon = document.getElementById('themeIcon');
+    if (savedTheme === 'dark') {
+        document.body.classList.add('dark-theme');
+        themeIcon.innerHTML = '<path d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>'; // Sol
+    }
+
     activeData = await getAuditData();
     checkUser();
 
@@ -69,6 +77,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('openAdminBtn').addEventListener('click', openAdmin);
     document.getElementById('closeAdminBtn').addEventListener('click', closeAdmin);
     document.getElementById('saveAdminBtn').addEventListener('click', saveAdmin);
+    
+    // Theme Toggle Listener
+    document.getElementById('themeToggleBtn').addEventListener('click', () => {
+        const isDark = document.body.classList.toggle('dark-theme');
+        const icon = document.getElementById('themeIcon');
+        
+        if (isDark) {
+            localStorage.setItem('theme', 'dark');
+            icon.innerHTML = '<path d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>'; // Sol
+        } else {
+            localStorage.setItem('theme', 'light');
+            icon.innerHTML = '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>'; // Luna
+        }
+    });
+
     document.getElementById('resetAdminBtn').addEventListener('click', resetAdmin);
     
     // History Modal Listeners
