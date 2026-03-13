@@ -346,8 +346,7 @@ async function generatePDFReport() {
 
         let hasIssues = false;
 
-        Object.keys(activeData.groups).forEach(sectorId => {
-            const sector = activeData.groups[sectorId];
+        activeData.sectors.forEach(sector => {
             let sectorHeaderPrinted = false;
 
             sector.items.forEach(item => {
