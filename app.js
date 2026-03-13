@@ -412,10 +412,7 @@ async function generatePDFReport() {
         const uniqueFileName = `Auditoria_Lotta_${formattedDateObj}_${dateObj.getTime()}.pdf`;
         const downloadFileName = `Auditoria_Lotta_${formattedDateObj}.pdf`;
 
-        // 1. Descarga Local
-        pdf.save(downloadFileName);
-
-        // 2. Subida a Supabase
+        // 1. Subida a Supabase (Primero para móviles)
         if (currentUser && currentAuditId) {
             btn.innerText = '☁ Subiendo a la nube...';
             const pdfBlob = pdf.output('blob');
@@ -430,19 +427,22 @@ async function generatePDFReport() {
                 });
 
             if (uploadError) {
-                alert("El PDF se descargó a tu computadora, pero hubo un error al guardarlo en la nube.");
+                alert("Hubo un error al guardarlo en la nube. Se procederá a descargar de forma local.");
             } else {
                 const { data: publicUrlData } = supabaseClient.storage.from('audit_reports').getPublicUrl(filePath);
                 if (publicUrlData) {
                     const { error: updateError } = await supabaseClient.from('audits').update({ pdf_url: publicUrlData.publicUrl }).eq('id', currentAuditId);
                     if (updateError) {
-                         console.error("Error updating audit with PDF url", updateError);
-                         alert("Error vinculando el PDF a la auditoría: " + updateError.message);
+                         console.error("Error vinculando el PDF a la auditoría", updateError);
                     }
                 }
-                document.getElementById('reportDetails').innerText = "✅ PDF descargado localmente y guardado en la nube.";
+                document.getElementById('reportDetails').innerText = "✅ Auditoría finalizada y PDF guardado en la nube.";
             }
         }
+
+        // 2. Descarga Local (Al final, porque en celular bloquea la UI/memoria)
+        btn.innerText = 'Descargando...';
+        pdf.save(downloadFileName);
     } catch (e) {
         console.error("PDF engine crash:", e);
         alert("Ocurrió un error general creando el documento: " + e.message);
