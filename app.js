@@ -418,11 +418,14 @@ async function generatePDFReport() {
         checkPageBreak();
         pdf.setFontSize(12);
         
+        let calculatedScore = 0;
+        Object.values(state.scores).forEach(score => calculatedScore += score);
+
         let finalMessage = '';
-        if (state.totalScore >= 90) {
+        if (calculatedScore >= 90) {
             pdf.setTextColor(16, 185, 129); // Verde
             finalMessage = '¡Excelente! No se registraron observaciones graves ni un desempeño bajo en esta auditoría.';
-        } else if (state.totalScore >= 65) {
+        } else if (calculatedScore >= 65) {
             pdf.setTextColor(245, 158, 11); // Amarillo/Naranja
             finalMessage = '¡Atención! Se han registrado varias oportunidades de mejora. Es necesario revisar los puntos regulares para alcanzar el estándar óptimo.';
         } else {
